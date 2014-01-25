@@ -126,8 +126,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      *
      * @return Page
      */
-    public function testAddPage()
-    {
+    public function testAddPage() {
         $page = new Page;
         $page->parent = wire('pages')->get('/');
         $page->template = wire('templates')->get('basic-page');
@@ -150,8 +149,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditPage(Page $page)
-    {
+    public function testEditPage(Page $page) {
         $page->setOutputFormatting(false);
         $page->title = $page->title . " 2";
         $page->body = "body text";
@@ -172,8 +170,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testUnpublishPage(Page $page)
-    {
+    public function testUnpublishPage(Page $page) {
         $page->setOutputFormatting(false);
         $page->addStatus(Page::statusUnpublished);
         $page->save();
@@ -190,8 +187,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testPublishPage(Page $page)
-    {
+    public function testPublishPage(Page $page) {
         $page->setOutputFormatting(false);
         $page->removeStatus(Page::statusUnpublished);
         $page->save();
@@ -209,8 +205,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testEditAndUnpublishPage(Page $page)
-    {
+    public function testEditAndUnpublishPage(Page $page) {
         $page->setOutputFormatting(false);
         $page->addStatus(Page::statusUnpublished);
         $page->sidebar = "sidebar test";
@@ -229,8 +224,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testMovePage(Page $page)
-    {
+    public function testMovePage(Page $page) {
         $page->setOutputFormatting(false);
         $page->parent = wire('pages')->get("/")->child();
         $page->save();
@@ -248,8 +242,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param Page $page
      * @return Page
      */
-    public function testTrashPage(Page $page)
-    {
+    public function testTrashPage(Page $page) {
         $page->setOutputFormatting(false);
         $page->trash();
         
@@ -326,8 +319,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @param int $key ID number of current database table row
      * @param string $data Expected database table row data
      */
-    public function testTableData($key, $data)
-    {
+    public function testTableData($key, $data) {
 
         // "?" is used as placeholder for page ID in the data provided by data provider
         if (strpos($data, "?") !== false) $data = str_replace("?", self::$page_id, $data);
@@ -376,8 +368,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @depends testRestorePage
      * @param Page $page
      */
-    public function testDeletePage(Page $page)
-    {
+    public function testDeletePage(Page $page) {
         $page->delete();
         self::$rows = 0;
         self::$data_rows = 0;
@@ -467,8 +458,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @depends testSnapshotOnNonVersionedPage
      * @param Page $page
      */
-    public function testDeleteNonVersionedPage(Page $page)
-    {
+    public function testDeleteNonVersionedPage(Page $page) {
         $page->delete();
     }
 
