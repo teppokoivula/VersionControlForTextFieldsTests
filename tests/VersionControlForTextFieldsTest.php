@@ -42,6 +42,28 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // Bootstrap ProcessWire
         require '../../../index.php';
 
+        // Messages array
+        $messages = array();
+
+        // Create new page field and add it to basic-page template (unless this
+        // field already exists and has been added to said template)
+        $field = wire('fields')->get('page');
+        if (!$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypePage');
+            $field->name = 'page';
+            $field->parent_id = 1; // home
+            $field->inputfield = 'InputfieldAsmSelect';
+            $field->save();
+            $messages[] = "Field '{$field->name}' added.";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = "Field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
+        }
+
         // Install and configure module (if possible and not already installed)
         $module = substr(__CLASS__, 0, strlen(__CLASS__)-4);
         if (!wire('modules')->isInstalled($module)) {
@@ -54,21 +76,25 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
                     'enabled_fields' => array(
                         1, // title
                         76, // body
+                        wire('fields')->get('page')->id,
                     ),
                 );
                 $defaults = VersionControlForTextFields::getDefaultData();
                 $data = array_merge($defaults, $data);
                 wire('modules')->saveModuleConfigData($module, $data);
-                exit("Module $module installed and configured, please rerun tests.\n");
+                $messages[] = "Module '$module' installed and configured, please rerun tests.";
             } else {
-                exit("Module $module not installable, please install manually and rerun tests.\n");
+                $messages[] = "Module '$module' NOT installable, please install manually and rerun tests.";
             }
         }
 
         // Remove any pages created but not removed during tests
-        foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
+        foreach (wire('pages')->find("name^=a-test-page, include=all") as $page) {
             $page->delete();
         }
+
+        // Rerun required?
+        if ($messages) exit(implode($messages, " ") . "\n");
 
         // Setup static variables
         self::$rows = 0;
@@ -88,6 +114,18 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // Remove any pages created but not removed during tests
         foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
             $page->delete();
+        }
+
+        // Remove page field from templates (or fieldgroups) it's added to and
+        // then remove the field itself.
+        $field = wire('fields')->get('page');
+        if ($field->id) {
+            $fieldgroups = $field->getFieldgroups();
+            foreach ($fieldgroups as $fieldgroup) {
+                $fieldgroup->remove($field);
+                $fieldgroup->save();
+            }
+            wire('fields')->delete($field);
         }
 
         // Uninstall module (if installed)
@@ -301,12 +339,32 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $this->assertEquals('new body text', $page->body);
 
         $page->title = "a test page 4";
+
         $page->snapshot('-2 seconds');
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
 
+        // Reset page
+        $page = wire('pages')->get($page->id);
+
         return $page;
 
+    }
+
+    /**
+     * Edit page type field
+     *
+     * This should add one row to both version history database tables.
+     *
+     * @depends testSnapshot
+     * @param Page $page
+     */
+    public function testEditPageField(Page $page) {
+        $page->setOutputFormatting(false);
+        $page->page = wire('pages')->get('/');
+        $page->save();
+        self::$rows += 1;
+        self::$data_rows += 1;
     }
 
     /**
@@ -321,8 +379,10 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      */
     public function testTableData($key, $data) {
 
-        // "?" is used as placeholder for page ID in the data provided by data provider
+        // "?" is used as placeholder for page ID in the data provided by data
+        // provider, "!" as a placeholder for page field ID.
         if (strpos($data, "?") !== false) $data = str_replace("?", self::$page_id, $data);
+        if (strpos($data, "!") !== false) $data = str_replace("!", wire('fields')->get('page')->id, $data);
 
         // Table names
         $t1 = VersionControlForTextFields::TABLE_NAME;
@@ -344,9 +404,10 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     /**
      * Data provider for testTableData
      * 
-     * Question mark ("?") is a placeholder for page ID, which in ProcessWire is
-     * dynamic; since we can't use our static self::$page_id variable here we'll
-     * just have to replace it once the row is provided to testTableData method.
+     * Question mark "?" is a placeholder for page ID, exclamation mark "!" for
+     * page field ID. ID's in ProcessWire are dynamic and since we can't use our
+     * static variables here either we'll just have to use placeholders and then
+     * replace them on the fly when the row is provided to testTableData method.
      *
      * @return array Array of expected database rows, each an array of it's own
      */
@@ -356,6 +417,8 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             array(1, '["?","1","40","guest","data","a test page 2"]'),
             array(2, '["?","76","40","guest","data","body text"]'),
             array(3, '["?","1","40","guest","data","a test page 3"]'),
+            array(4, '["?","76","40","guest","data","new body text"]'),
+            array(5, '["?","!","40","guest","data","1"]'),
         );
     }
 
