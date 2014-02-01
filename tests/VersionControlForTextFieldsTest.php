@@ -42,8 +42,9 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // Bootstrap ProcessWire
         require '../../../index.php';
 
-        // Messages array
+        // Messages and errors
         $messages = array();
+        $errors = array();
 
         // Create new page field and add it to basic-page template (unless this
         // field already exists and has been added to said template)
@@ -82,9 +83,10 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
                 $defaults = VersionControlForTextFields::getDefaultData();
                 $data = array_merge($defaults, $data);
                 wire('modules')->saveModuleConfigData($module, $data);
-                $messages[] = "Module '$module' installed and configured, please rerun tests.";
+                wire('modules')->triggerInit();
+                $messages[] = "Module '$module' installed and configured.";
             } else {
-                $messages[] = "Module '$module' NOT installable, please install manually and rerun tests.";
+                $errors[] = "Module '$module' NOT installable, please install manually and rerun tests.";
             }
         }
 
@@ -93,9 +95,10 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $page->delete();
         }
 
-        // Rerun required?
-        if ($messages) exit(implode($messages, " ") . "\n");
-
+        // Messages and errors
+        if ($messages) echo "\n" . implode($messages, " ") . "\n\n";
+        if ($errors) die("\n" . implode($errors, " ") . "\n\n");
+        
         // Setup static variables
         self::$rows = 0;
         self::$data_rows = 0;
@@ -111,9 +114,14 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      */
     public static function tearDownAfterClass() {
 
+        // Messages and errors
+        $messages = array();
+        $errors = array();
+
         // Remove any pages created but not removed during tests
         foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
             $page->delete();
+            $messages[] = "Page '{$page->url}' deleted.";
         }
 
         // Remove page field from templates (or fieldgroups) it's added to and
@@ -124,8 +132,10 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             foreach ($fieldgroups as $fieldgroup) {
                 $fieldgroup->remove($field);
                 $fieldgroup->save();
+                $messages[] = "Field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'.";
             }
             wire('fields')->delete($field);
+            $messages[] = "Field '{$field->name}' deleted.";
         }
 
         // Uninstall module (if installed)
@@ -133,11 +143,16 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         if (wire('modules')->isInstalled($module)) {
             if (wire('modules')->isUninstallable($module)) {
                 wire('modules')->uninstall($module);
+                $messages[] = "Module '$module' uninstalled.";
             } else {
-                exit("Module $module not uninstallable, please uninstall manually before any new tests.\n");
+                $errors[] = "Module '$module' not uninstallable, please uninstall manually before any new tests.";
             }
         }
 
+        // Messages and errors
+        if ($messages) echo "\n\n" . implode($messages, " ") . "\n";
+        if ($errors) die("\n\n" . implode($errors, " ") . "\n");
+        
     }
 
     /**
