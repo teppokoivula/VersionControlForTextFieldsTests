@@ -4,7 +4,7 @@
  * PHPUnit tests for Version Control For Text Fields ProcessWire module
  * 
  * Intended to be run against a clean installation of ProcessWire with Version
- * Control For Text Fields installed. Most of the tests included depend on each
+ * Control For Text Fields included. Most of the tests included depend on each
  * other, which is why they're grouped together into one file and use depends
  * annotation.
  *
@@ -31,12 +31,8 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Executed once before tests
      *
      * Set test environment up by removing old data, bootstrapping ProcessWire
-     * and making sure that module undergoing tests is properly installed.
+     * and making sure that module undergoing tests is uninstalled.
      *
-     * After each time the module is installed, we're going to exit and output a
-     * message asking to rerun the tests. This is required in order to make sure
-     * that all required hook methods are properly seen and run by ProcessWire.
-     * 
      */
     public static function setUpBeforeClass() {
 
@@ -149,8 +145,8 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     /**
      * Executed after each test
      *
-     * At the moment all tests end with same assertions, so it makes sense to
-     * move those here wwhere they gets executed automatically after each test.
+     * Almost all tests end with same assertions, so it makes sense to move
+     * those here where they get executed automatically after each test.
      *
      */
     public function tearDown() {

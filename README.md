@@ -2,7 +2,7 @@ PHPUnit tests for Version Control For Text Fields ProcessWire module
 ====================================================================
 
 Intended to be run against a clean installation of ProcessWire with Version
-Control For Text Fields installed. Most of the tests included depend on each
+Control For Text Fields included. Most of the tests included depend on each
 other, which is why they're grouped together into one file and use depends
 annotation.
 
