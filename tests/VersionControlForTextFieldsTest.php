@@ -25,6 +25,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     protected static $rows;
     protected static $data_rows;
     protected static $page_id;
+    protected static $module_name;
 
     /**
      * Executed once before tests
@@ -46,6 +47,11 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $messages = array();
         $errors = array();
 
+        // Set module name (unless already set)
+        if (!self::$module_name) {
+            self::$module_name = substr(__CLASS__, 0, strlen(__CLASS__)-4);
+        }
+
         // Create new page field and add it to basic-page template (unless this
         // field already exists and has been added to said template)
         $field = wire('fields')->get('page');
@@ -65,34 +71,20 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $messages[] = "Field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
         }
 
-        // Install and configure module (if possible and not already installed)
-        $module = substr(__CLASS__, 0, strlen(__CLASS__)-4);
-        if (!wire('modules')->isInstalled($module)) {
-            if (wire('modules')->isInstallable($module)) {
-                wire('modules')->install($module);
-                $data = array(
-                    'enabled_templates' => array(
-                        29, // basic-page
-                    ),
-                    'enabled_fields' => array(
-                        1, // title
-                        76, // body
-                        wire('fields')->get('page')->id,
-                    ),
-                );
-                $defaults = VersionControlForTextFields::getDefaultData();
-                $data = array_merge($defaults, $data);
-                wire('modules')->saveModuleConfigData($module, $data);
-                wire('modules')->triggerInit();
-                $messages[] = "Module '$module' installed and configured.";
-            } else {
-                $errors[] = "Module '$module' NOT installable, please install manually and rerun tests.";
-            }
-        }
-
-        // Remove any pages created but not removed during tests
+        // Remove any pages created but not removed during previous tests
         foreach (wire('pages')->find("name^=a-test-page, include=all") as $page) {
             $page->delete();
+            $messages[] = "Page '{$page->url}' deleted.";
+        }
+
+        // Uninstall module (if installed)
+        if (wire('modules')->isInstalled(self::$module_name)) {
+            if (wire('modules')->isUninstallable(self::$module_name)) {
+                wire('modules')->uninstall(self::$module_name);
+                $messages[] = "Module '" . self::$module_name . "' uninstalled.";
+            } else {
+                $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests.";
+            }
         }
 
         // Messages and errors
@@ -118,12 +110,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $messages = array();
         $errors = array();
 
-        // Remove any pages created but not removed during tests
-        foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
-            $page->delete();
-            $messages[] = "Page '{$page->url}' deleted.";
-        }
-
         // Remove page field from templates (or fieldgroups) it's added to and
         // then remove the field itself.
         $field = wire('fields')->get('page');
@@ -138,14 +124,19 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $messages[] = "Field '{$field->name}' deleted.";
         }
 
+        // Remove any pages created but not removed during tests
+        foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
+            $page->delete();
+            $messages[] = "Page '{$page->url}' deleted.";
+        }
+
         // Uninstall module (if installed)
-        $module = substr(__CLASS__, 0, strlen(__CLASS__)-4);
-        if (wire('modules')->isInstalled($module)) {
-            if (wire('modules')->isUninstallable($module)) {
-                wire('modules')->uninstall($module);
-                $messages[] = "Module '$module' uninstalled.";
+        if (wire('modules')->isInstalled(self::$module_name)) {
+            if (wire('modules')->isUninstallable(self::$module_name)) {
+                wire('modules')->uninstall(self::$module_name);
+                $messages[] = "Module '" . self::$module_name . "' uninstalled.";
             } else {
-                $errors[] = "Module '$module' not uninstallable, please uninstall manually before any new tests.";
+                $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests.";
             }
         }
 
@@ -163,12 +154,57 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      *
      */
     public function tearDown() {
-        $sql = "SELECT COUNT(*) FROM " . VersionControlForTextFields::TABLE_NAME;
-        $row = wire('db')->query($sql)->fetch_row();
-        $this->assertEquals(self::$rows, reset($row));
-        $sql = "SELECT COUNT(*) FROM " . VersionControlForTextFields::TABLE_NAME;
-        $row = wire('db')->query($sql)->fetch_row();
-        $this->assertEquals(self::$data_rows, reset($row));
+        if (!in_array($this->getName(), array("testModuleIsInstallable", "testUninstallModule"))) {
+            $sql = "SELECT COUNT(*) FROM " . constant(self::$module_name . "::TABLE_NAME");
+            $row = wire('db')->query($sql)->fetch_row();
+            $this->assertEquals(self::$rows, reset($row));
+            $sql = "SELECT COUNT(*) FROM " . constant(self::$module_name . "::DATA_TABLE_NAME");
+            $row = wire('db')->query($sql)->fetch_row();
+            $this->assertEquals(self::$data_rows, reset($row));
+        }
+    }
+    
+    /**
+     * Make sure that module is installable
+     *
+     * @return string module name
+     */
+    public function testModuleIsInstallable() {
+        $this->assertTrue(wire('modules')->isInstallable(self::$module_name));
+        return self::$module_name;
+    }
+
+    /**
+     * Install module
+     * 
+     * @depends testModuleIsInstallable
+     * @param string $module_name
+     * @return string module name
+     */
+    public function testInstallModule($module_name) {
+        
+        // Install the module
+        wire('modules')->install($module_name);
+        $this->assertTrue(wire('modules')->isInstalled($module_name));
+        
+        // Configure the module
+        $data = array(
+            'enabled_templates' => array(
+                29, // basic-page
+            ),
+            'enabled_fields' => array(
+                1, // title
+                76, // body
+                wire('fields')->get('page')->id,
+            ),
+        );
+        $defaults = VersionControlForTextFields::getDefaultData();
+        $data = array_merge($defaults, $data);
+        wire('modules')->saveModuleConfigData($module_name, $data);
+        wire('modules')->triggerInit();
+
+        return $module_name;
+
     }
 
     /**
@@ -177,6 +213,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Only field under version control that we're modifying here is 'title',
      * so we should get one new row in both version control database tables.
      *
+     * @depends testInstallModule
      * @return Page
      */
     public function testAddPage() {
@@ -388,6 +425,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * In order to compare database rows more easily, we'll encode them as JSON
      * and make the data provider method also give us JSON, one row at a time.
      *
+     * @depends testInstallModule
      * @dataProvider providerForTestTableData
      * @param int $key ID number of current database table row
      * @param string $data Expected database table row data
@@ -400,8 +438,8 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         if (strpos($data, "!") !== false) $data = str_replace("!", wire('fields')->get('page')->id, $data);
 
         // Table names
-        $t1 = VersionControlForTextFields::TABLE_NAME;
-        $t2 = VersionControlForTextFields::DATA_TABLE_NAME;
+        $t1 = constant(self::$module_name . "::TABLE_NAME");
+        $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
 
         $sql = "
         SELECT pages_id, fields_id, users_id, username, property, data 
@@ -458,6 +496,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Since this page isn't under version control, no rows should be saved into
      * version control database tables.
      *
+     * @depends testInstallModule
      * @return Page
      */
     public function testAddNonVersionedPage() {
@@ -538,6 +577,29 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      */
     public function testDeleteNonVersionedPage(Page $page) {
         $page->delete();
+    }
+
+    /**
+     * Make sure that module is uninstallable
+     *
+     * @depends testInstallModule
+     * @param string $module_name
+     * @return string module name
+     */
+    public function testModuleIsUninstallable($module_name) {
+        $this->assertTrue(wire('modules')->isUninstallable($module_name));
+        return $module_name;
+    }
+
+    /**
+     * Uninstall module
+     *
+     * @depends testModuleIsUninstallable
+     * @param string $module_name
+     */
+    public function testUninstallModule($module_name) {
+        wire('modules')->uninstall($module_name);
+        $this->assertFalse(wire('modules')->isInstalled($module_name));
     }
 
 }
