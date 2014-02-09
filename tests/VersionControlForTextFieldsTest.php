@@ -45,7 +45,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // Create new page field and add it to basic-page template (unless this
         // field already exists and has been added to said template)
         $field = wire('fields')->get('page');
-        if (!$field->id) {
+        if (!$field || !$field->id) {
             $field = new Field;
             $field->type = wire('modules')->get('FieldtypePage');
             $field->name = 'page';
@@ -65,7 +65,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // this field already exists and has been added to said template)
         $field_name = "repeater";
         $field = wire('fields')->get($field_name);
-        if (!$field->id) {
+        if (!$field || !$field->id) {
             $fieldgroup = new Fieldgroup;
             $fieldgroup->name = "repeater_" . $field_name;
             $fieldgroup->append(wire('fields')->get('title'));
