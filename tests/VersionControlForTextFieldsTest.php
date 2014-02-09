@@ -4,9 +4,8 @@
  * PHPUnit tests for Version Control For Text Fields ProcessWire module
  * 
  * Intended to be run against a clean installation of ProcessWire with Version
- * Control For Text Fields included. Most of the tests included depend on each
- * other, which is why they're grouped together into one file and use depends
- * annotation.
+ * Control For Text Fields available. Most of the tests depend on each other,
+ * so they're grouped together into one file and use depends annotation.
  *
  * DO NOT run these tests against production site, as they will add, edit and
  * remove pages when necessary, thus potentially seriously damaging your site!
@@ -18,13 +17,10 @@
 class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
 
     /**
-     * Static properties shared by all tests; these are part helpers and part
-     * requirement set by certain features of ProcessWire.
+     * Static properties shared by all tests
      *
      */
-    protected static $rows;
-    protected static $data_rows;
-    protected static $page_id;
+    protected static $data;
     protected static $module_name;
 
     /**
@@ -43,10 +39,8 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $messages = array();
         $errors = array();
 
-        // Set module name (unless already set)
-        if (!self::$module_name) {
-            self::$module_name = substr(__CLASS__, 0, strlen(__CLASS__)-4);
-        }
+        // Set module name
+        self::$module_name = substr(__CLASS__, 0, strlen(__CLASS__)-4);
 
         // Create new page field and add it to basic-page template (unless this
         // field already exists and has been added to said template)
@@ -58,19 +52,51 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $field->parent_id = 1; // home
             $field->inputfield = 'InputfieldAsmSelect';
             $field->save();
-            $messages[] = "Field '{$field->name}' added.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added.";
         }
         $fieldgroup = wire('fieldgroups')->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
-            $messages[] = "Field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
+        }
+
+        // Create new repeater field and add it to basic-page template (unless
+        // this field already exists and has been added to said template)
+        $field_name = "repeater";
+        $field = wire('fields')->get($field_name);
+        if (!$field->id) {
+            $fieldgroup = new Fieldgroup;
+            $fieldgroup->name = "repeater_" . $field_name;
+            $fieldgroup->append(wire('fields')->get('title'));
+            $fieldgroup->save();
+            $template = new Template;
+            $template->name = "repeater_" . $field_name;
+            $template->fieldgroup = $fieldgroup;
+            $template->flags = Template::flagSystem;	
+            $template->noChildren = 1; 
+            $template->noParents = 1;
+            $template->noGlobal = 1; 
+            $template->save();
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeRepeater');
+            $field->name = $field_name;
+            $field->parent_id = wire('pages')->get("name=for-field-{$field->id}")->id;
+            $field->template_id = $template->id;
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added.";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
         }
 
         // Remove any pages created but not removed during previous tests
         foreach (wire('pages')->find("name^=a-test-page, include=all") as $page) {
             $page->delete();
-            $messages[] = "Page '{$page->url}' deleted.";
+            $messages[] = get_class($page) . " '{$page->url}' deleted.";
         }
 
         // Uninstall module (if installed)
@@ -88,8 +114,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         if ($errors) die("\n" . implode($errors, " ") . "\n\n");
         
         // Setup static variables
-        self::$rows = 0;
-        self::$data_rows = 0;
+        self::$data = array();
 
     }
 
@@ -106,6 +131,12 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $messages = array();
         $errors = array();
 
+        // Remove any pages created but not removed during tests
+        foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
+            $page->delete();
+            $messages[] = get_class($page) . " '{$page->url}' deleted.";
+        }
+
         // Remove page field from templates (or fieldgroups) it's added to and
         // then remove the field itself.
         $field = wire('fields')->get('page');
@@ -114,16 +145,28 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             foreach ($fieldgroups as $fieldgroup) {
                 $fieldgroup->remove($field);
                 $fieldgroup->save();
-                $messages[] = "Field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'.";
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'.";
             }
             wire('fields')->delete($field);
-            $messages[] = "Field '{$field->name}' deleted.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted.";
         }
 
-        // Remove any pages created but not removed during tests
-        foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
-            $page->delete();
-            $messages[] = "Page '{$page->url}' deleted.";
+        // Remove repeater field from templates (or fieldgroups) it's added to
+        // and then remove the field itself.
+        $field = wire('fields')->get('repeater');
+        if ($field->id) {
+            $fieldgroups = $field->getFieldgroups();
+            foreach ($fieldgroups as $fieldgroup) {
+                $fieldgroup->remove($field);
+                $fieldgroup->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'.";
+            }
+            foreach (wire('pages')->find("template=repeater_{$field->name}, include=all") as $page) {
+                $page->delete();
+                $messages[] = get_class($page) . " '{$page->url}' deleted.";
+            }
+            wire('fields')->delete($field);
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted.";
         }
 
         // Uninstall module (if installed)
@@ -151,12 +194,24 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      */
     public function tearDown() {
         if (!in_array($this->getName(), array("testModuleIsInstallable", "testUninstallModule"))) {
-            $sql = "SELECT COUNT(*) FROM " . constant(self::$module_name . "::TABLE_NAME");
-            $row = wire('db')->query($sql)->fetch_row();
-            $this->assertEquals(self::$rows, reset($row));
-            $sql = "SELECT COUNT(*) FROM " . constant(self::$module_name . "::DATA_TABLE_NAME");
-            $row = wire('db')->query($sql)->fetch_row();
-            $this->assertEquals(self::$data_rows, reset($row));
+            $t1 = constant(self::$module_name . "::TABLE_NAME");
+            $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
+            $result = wire('db')->query("
+            SELECT pages_id, fields_id, users_id, username, property, data 
+            FROM {$t1} t1
+            JOIN {$t2} t2 ON t2.{$t1}_id = t1.id 
+            ");
+            $num = 0;
+            while ($row = $result->fetch_row()) {
+                $data = self::$data[$num];
+                $message = null;
+                if (!$data) {
+                    $data = array();
+                    $message = "Local data row was NULL, using placeholder array to get meaningful diff output.";
+                }
+                $this->assertEquals($data, $row, $message);
+                ++$num;
+            }
         }
     }
     
@@ -215,13 +270,11 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     public function testAddPage() {
         $page = new Page;
         $page->parent = wire('pages')->get('/');
+        $template = wire('templates')->get('basic-page');
         $page->template = wire('templates')->get('basic-page');
         $page->title = "a test page";
         $page->save();
-        self::$page_id = $page->id;
-        self::$rows += 1;
-        self::$data_rows += 1;
-        
+        self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page");
         return $page;
     }
 
@@ -237,12 +290,11 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      */
     public function testEditPage(Page $page) {
         $page->setOutputFormatting(false);
-        $page->title = $page->title . " 2";
+        $page->title = "a test page 2";
         $page->body = "body text";
         $page->save();
-        self::$rows += 2;
-        self::$data_rows += 2;
-        
+        self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 2");
+        self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
         return $page;
     }
 
@@ -277,7 +329,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->setOutputFormatting(false);
         $page->removeStatus(Page::statusUnpublished);
         $page->save();
-        
         return $page;
     }
 
@@ -296,7 +347,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->addStatus(Page::statusUnpublished);
         $page->sidebar = "sidebar test";
         $page->save();
-
         return $page;
     }
 
@@ -314,7 +364,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->setOutputFormatting(false);
         $page->parent = wire('pages')->get("/")->child();
         $page->save();
-
         return $page;
     }
 
@@ -331,7 +380,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     public function testTrashPage(Page $page) {
         $page->setOutputFormatting(false);
         $page->trash();
-        
         return $page;
     }
 
@@ -349,7 +397,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->setOutputFormatting(false);
         $page->parent = wire('pages')->get("/");
         $page->save();
-        
         return $page;
     }
 
@@ -375,8 +422,8 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->name = $page->title;
         $page->body = "new body text";
         $page->save();
-        self::$rows += 2;
-        self::$data_rows += 2;
+        self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
+        self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "new body text");
 
         $page->snapshot('-2 seconds');
         $this->assertEquals('a test page 2', $page->title);
@@ -406,69 +453,32 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      *
      * @depends testSnapshot
      * @param Page $page
+     * @return Page
      */
     public function testEditPageField(Page $page) {
         $page->setOutputFormatting(false);
-        $page->page = wire('pages')->get('/');
+        $page->page = wire('pages')->get('/about/');
         $page->save();
-        self::$rows += 1;
-        self::$data_rows += 1;
+        // @todo find out why another $page->save() here would save duplicate data row
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1001");
+        return $page;
     }
 
     /**
-     * Make sure that database contains correct data
+     * Edit repeater item
      *
-     * In order to compare database rows more easily, we'll encode them as JSON
-     * and make the data provider method also give us JSON, one row at a time.
+     * One row should be added to both version history database tables. Note
+     * that pages_id for version_control_for_text_fields row should point to
+     * the repeater item (RepeaterPage), not to the page it's on.
      *
-     * @depends testInstallModule
-     * @dataProvider providerForTestTableData
-     * @param int $key ID number of current database table row
-     * @param string $data Expected database table row data
+     * @depends testEditPageField
+     * @param Page $page
      */
-    public function testTableData($key, $data) {
-
-        // "?" is used as placeholder for page ID in the data provided by data
-        // provider, "!" as a placeholder for page field ID.
-        if (strpos($data, "?") !== false) $data = str_replace("?", self::$page_id, $data);
-        if (strpos($data, "!") !== false) $data = str_replace("!", wire('fields')->get('page')->id, $data);
-
-        // Table names
-        $t1 = constant(self::$module_name . "::TABLE_NAME");
-        $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
-
-        $sql = "
-        SELECT pages_id, fields_id, users_id, username, property, data 
-        FROM {$t1} t1
-        JOIN {$t2} t2 ON t2.{$t1}_id = t1.id 
-        LIMIT {$key},1
-        ";
-        $row = wire('db')->query($sql)->fetch_row();
-
-        // Make sure that row of data from database matches expected data provided by data provider
-        $this->assertEquals($data, json_encode($row));
-
-    }
-
-    /**
-     * Data provider for testTableData
-     * 
-     * Question mark "?" is a placeholder for page ID, exclamation mark "!" for
-     * page field ID. ID's in ProcessWire are dynamic and since we can't use our
-     * static variables here either we'll just have to use placeholders and then
-     * replace them on the fly when the row is provided to testTableData method.
-     *
-     * @return array Array of expected database rows, each an array of it's own
-     */
-    public static function providerForTestTableData() {
-        return array(
-            array(0, '["?","1","40","guest","data","a test page"]'),
-            array(1, '["?","1","40","guest","data","a test page 2"]'),
-            array(2, '["?","76","40","guest","data","body text"]'),
-            array(3, '["?","1","40","guest","data","a test page 3"]'),
-            array(4, '["?","76","40","guest","data","new body text"]'),
-            array(5, '["?","!","40","guest","data","1"]'),
-        );
+    public function testEditRepeaterField(Page $page) {
+        $item = $page->repeater->getNew();
+        $item->title = "repeater title";
+        $page->save('repeater');
+        self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "repeater title");
     }
 
     /**
@@ -477,13 +487,15 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * This operation should clear all previously added rows from version
      * control database table.
      *
+     * Note: this will fail unless you're running ProcessWire 2.4+ with issue
+     * related to repeater garbage cleaning fixed in Pages->delete().
+     *
      * @depends testRestorePage
      * @param Page $page
      */
     public function testDeletePage(Page $page) {
         $page->delete();
-        self::$rows = 0;
-        self::$data_rows = 0;
+        self::$data = array();
     }
 
     /**
@@ -501,7 +513,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->template = wire('templates')->get('sitemap');
         $page->title = "a test page 5";
         $page->save();
-        
         return $page;
     }
 
@@ -519,7 +530,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->title = "a test page 6";
         $page->summary = "summary text";
         $page->save();
-
         return $page;
     }
 
@@ -583,7 +593,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return string module name
      */
     public function testModuleIsUninstallable($module_name) {
-        $this->assertTrue(wire('modules')->isUninstallable($module_name));
+        $this->assertTrue(wire('modules')->isUninstallable($module_name), "This isn't necessarily a sign of real error, as support for installing and uninstalling modules during one request is a PW 2.4+ feature");
         return $module_name;
     }
 
