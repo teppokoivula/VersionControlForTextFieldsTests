@@ -193,7 +193,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      *
      */
     public function tearDown() {
-        if (!in_array($this->getName(), array("testModuleIsInstallable", "testUninstallModule"))) {
+        if (!in_array($this->getName(), array("testModuleIsInstallable", "testModuleIsUninstallable", "testUninstallModule"))) {
             $t1 = constant(self::$module_name . "::TABLE_NAME");
             $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
             $result = wire('db')->query("
@@ -401,13 +401,32 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
+     * Edit repeater item
+     *
+     * One row should be added to both version history database tables. Note
+     * that pages_id for version_control_for_text_fields row should point to
+     * the repeater item (RepeaterPage), not to the page it's on.
+     *
+     * @depends testRestorePage
+     * @param Page $page
+     * @return Page
+     */
+    public function testEditRepeaterField(Page $page) {
+        $item = $page->repeater->getNew();
+        $item->title = "repeater title";
+        $page->save('repeater');
+        self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "repeater title");
+        return $page;
+    }
+
+    /**
      * Fetch a snapshot for page
      *
      * To test snapshots properly, we need to make sure that there's enough time
      * between previous changes and current state, which is why we'll use sleep
      * function. Back and forth testing is mostly just a precaution.
      *
-     * @depends testRestorePage
+     * @depends testEditRepeaterField
      * @param Page $page
      * @return Page
      */
@@ -421,23 +440,30 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->title = "a test page 3";
         $page->name = $page->title;
         $page->body = "new body text";
+        $item = $page->repeater->first();
+        $item->title = "new repeater title";
         $page->save();
+        self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "new repeater title");
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 3");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "new body text");
 
         $page->snapshot('-2 seconds');
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
+        $this->assertEquals('repeater title', $page->repeater->first()->title);
 
         $page->snapshot();
         $this->assertEquals('a test page 3', $page->title);
         $this->assertEquals('new body text', $page->body);
+        $this->assertEquals('new repeater title', $page->repeater->first()->title);
 
         $page->title = "a test page 4";
+        $page->repeater->first()->title = "repeater title 2";
 
         $page->snapshot('-2 seconds');
         $this->assertEquals('a test page 2', $page->title);
         $this->assertEquals('body text', $page->body);
+        $this->assertEquals('repeater title', $page->repeater->first()->title);
 
         // Reset page
         $page = wire('pages')->get($page->id);
@@ -465,23 +491,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * Edit repeater item
-     *
-     * One row should be added to both version history database tables. Note
-     * that pages_id for version_control_for_text_fields row should point to
-     * the repeater item (RepeaterPage), not to the page it's on.
-     *
-     * @depends testEditPageField
-     * @param Page $page
-     */
-    public function testEditRepeaterField(Page $page) {
-        $item = $page->repeater->getNew();
-        $item->title = "repeater title";
-        $page->save('repeater');
-        self::$data[] = array((string) $item->id, "1", "40", "guest", "data", "repeater title");
-    }
-
-    /**
      * Delete previously added page
      *
      * This operation should clear all previously added rows from version
@@ -490,7 +499,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Note: this will fail unless you're running ProcessWire 2.4+ with issue
      * related to repeater garbage cleaning fixed in Pages->delete().
      *
-     * @depends testRestorePage
+     * @depends testEditPageField
      * @param Page $page
      */
     public function testDeletePage(Page $page) {
@@ -504,7 +513,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Since this page isn't under version control, no rows should be saved into
      * version control database tables.
      *
-     * @depends testInstallModule
+     * @depends testDeletePage
      * @return Page
      */
     public function testAddNonVersionedPage() {
