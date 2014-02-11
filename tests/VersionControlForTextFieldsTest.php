@@ -32,9 +32,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      */
     public static function setUpBeforeClass() {
 
-        // Bootstrap ProcessWire
-        require '../../../index.php';
-
         // Messages and errors
         $messages = array();
         $errors = array();
