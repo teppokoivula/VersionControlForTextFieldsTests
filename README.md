@@ -16,9 +16,9 @@ of ways to do that, including PHAR, Composer and PEAR; visit PHPUnit Manual
 for details: http://phpunit.de/manual/3.7/en/installation.html.
 
 Once PHPUnit is installed, the rest is as simple as cloning this repository
-into the module directory (usually /site/modules/name-of-module/) and while
-there typing `phpunit name-of-tests-directory` (or simply `phpunit .` which
-will run *all* PHPUnit tests found below current directory).
+into the module directory (usually /site/modules/name-of-module/), going to
+cloned tests directory and typing `phpunit .` to run all PHPUnit tests that
+were found below that directory.
 
 ## See also
 
