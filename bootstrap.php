@@ -4,4 +4,5 @@
 error_reporting(E_ALL | E_STRICT);
 
 // Bootstrap ProcessWire
-require '../../../../index.php';
+$root_path = substr(__FILE__, 0, strrpos(__FILE__, '/site/modules/'));
+require_once "$root_path/index.php";
