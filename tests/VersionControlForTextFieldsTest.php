@@ -200,7 +200,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             ");
             $num = 0;
             while ($row = $result->fetch_row()) {
-                $data = self::$data[$num];
+                $data = isset(self::$data[$num]) ? self::$data[$num] : null;
                 $message = null;
                 if (!$data) {
                     $data = array();
