@@ -57,6 +57,22 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
         }
 
+        // Create checkbox field and add it to basic-page template
+        $field = wire('fields')->get('checkbox');
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeCheckbox');
+            $field->name = 'checkbox';
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+
         // Create new repeater field and add it to basic-page template
         $field_name = "repeater";
         $field = wire('fields')->get($field_name);
@@ -104,75 +120,66 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             }
         }
 
-        // Create dummy languages
-        $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
-        $language_names = array('java', 'perl');
-        while ($language_name = array_shift($language_names)) {
-            $language = wire('languages')->get($language_name);
-            if (!$language->id) {
-                $language = wire('languages')->add($language_name);
-                $messages[] = get_class($language) . " '" . $language->name . "' added";
+        // Language tests require "reloadLanguages" method
+        if (method_exists(wire('languages'), 'reloadLanguages')) {
+
+            // Create dummy languages
+            $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
+            $language_names = array('java', 'perl');
+            while ($language_name = array_shift($language_names)) {
+                $language = wire('languages')->get($language_name);
+                if (!$language->id) {
+                    $language = wire('languages')->add($language_name);
+                    wire('languages')->reloadLanguages();
+                    $messages[] = get_class($language) . " '" . $language->name . "' added";
+                }
             }
-        }
-
-        // Install LanguageSupportFields (unless already installed)
-        $module_name = 'LanguageSupportFields';
-        if (!wire('modules')->isInstalled($module_name)) {
-            $module = wire('modules')->getInstall($module_name);
-            if (wire('modules')->isInstalled($module_name)) {
-                $messages[] = "Module '{$module_name}' installed";
-            } else {
-                $errors[] = "Unable to install '{$module_name}'";
+            
+            // Install LanguageSupportFields (unless already installed)
+            $module_name = 'LanguageSupportFields';
+            if (!wire('modules')->isInstalled($module_name)) {
+                $module = wire('modules')->getInstall($module_name);
+                if (wire('modules')->isInstalled($module_name)) {
+                    $messages[] = "Module '{$module_name}' installed";
+                } else {
+                    $errors[] = "Unable to install '{$module_name}'";
+                }
             }
-        }
+            
+            // Create new multi-language textfield and add it to basic-page template
+            $field = wire('fields')->get('text_language');
+            if (!$field || !$field->id) {
+                $field = new Field;
+                $field->type = wire('modules')->get('FieldtypeTextLanguage');
+                $field->name = 'text_language';
+                $field->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+            }
+            $fieldgroup = wire('fieldgroups')->get('basic-page');
+            if (!$fieldgroup->hasField($field)) {
+                $fieldgroup->add($field);
+                $fieldgroup->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+            }
 
-        // Create new multi-language textfield and add it to basic-page template
-        $field = wire('fields')->get('text_language');
-        if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeTextLanguage');
-            $field->name = 'text_language';
-            $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
-        }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
-        if (!$fieldgroup->hasField($field)) {
-            $fieldgroup->add($field);
-            $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
-        }
+            // Create new language alternate field for checkbox created earlier
+            $field = wire('fields')->get('checkbox_java');
+            if (!$field || !$field->id) {
+                $field = new Field;
+                $field->type = wire('modules')->get('FieldtypeCheckbox');
+                $field->name = 'checkbox_java';
+                $field->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+            }
+            $fieldgroup = wire('fieldgroups')->get('basic-page');
+            if (!$fieldgroup->hasField($field)) {
+                $fieldgroup->add($field);
+                $fieldgroup->save();
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+            }
 
-        // Create checkbox fields and add them to basic-page template (note:
-        // language alternate fields)
-        $field = wire('fields')->get('checkbox');
-        if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeCheckbox');
-            $field->name = 'checkbox';
-            $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
-        if (!$fieldgroup->hasField($field)) {
-            $fieldgroup->add($field);
-            $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
-        }
-        $field = wire('fields')->get('checkbox_java');
-        if (!$field || !$field->id) {
-            $field = new Field;
-            $field->type = wire('modules')->get('FieldtypeCheckbox');
-            $field->name = 'checkbox_java';
-            $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
-        }
-        $fieldgroup = wire('fieldgroups')->get('basic-page');
-        if (!$fieldgroup->hasField($field)) {
-            $fieldgroup->add($field);
-            $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
-        }
-
+            
         // Messages and errors
         if ($messages) echo "* " . implode($messages, "\n* ") . "\n\n";
         if ($errors) die("* " . implode($errors, "\n* ") . "\n\n");
@@ -224,7 +231,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $fields = array('page', 'text_language', 'checkbox', 'checkbox_java');
         foreach ($fields as $field) {
             $field = wire('fields')->get($field);
-            if ($field->id) {
+            if ($field && $field->id) {
                 $fieldgroups = $field->getFieldgroups();
                 foreach ($fieldgroups as $fieldgroup) {
                     $fieldgroup->remove($field);
@@ -351,10 +358,15 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
                 76, // body
                 wire('fields')->get('page')->id,
                 wire('fields')->get('checkbox')->id,
-                wire('fields')->get('checkbox_java')->id,
-                wire('fields')->get('text_language')->id,
             ),
         );
+        if (method_exists(wire('languages'), "reloadLanguages")) {
+            array_push(
+                $data['enabled_fields'],
+                wire('fields')->get('checkbox_java')->id,
+                wire('fields')->get('text_language')->id
+            );
+        }
         $defaults = VersionControlForTextFields::getDefaultData();
         $data = array_merge($defaults, $data);
         wire('modules')->saveModuleConfigData($module_name, $data);
@@ -395,16 +407,13 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditPage(Page $page) {
-        $page->setOutputFormatting(false);
         $page->title = "a test page 2";
         $page->body = "body text";
         $page->checkbox = 1;
-        $page->checkbox_java = 1;
         $page->save();
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 2");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox')->id, "40", "guest", "data", "1");
-        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox_java')->id, "40", "guest", "data", "1");
         return $page;
     }
 
@@ -415,9 +424,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * both of which were created during setup. This should add two rows to
      * version control database tables.
      *
-     * Note: this test can't pass until ProcessWire issue #374 is resolved or
-     * dummy languages are created before bootstrapping ProcessWire for tests.
-     *
      * @todo module should be updated to avoid always storing empty value for
      *       default language. This feature depends on ProcessWire issue #373.
      * @depends testEditPage
@@ -425,15 +431,19 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditMultiLanguageFields(Page $page) {
-        $page->setOutputFormatting(false);
+        if (!method_exists(wire('languages'), 'reloadLanguages')) {
+            $this->markTestSkipped("wire('languages') doesn't have reloadLanguages method");
+        }
         $java = wire('languages')->get('java');
         $perl = wire('languages')->get('perl');
         $page->text_language->setLanguageValue($java, 'since 1995');
         $page->text_language->setLanguageValue($perl, 'since 1987');
+        $page->checkbox_java = 1;
         $page->save();
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data", "");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $java, "since 1995");
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $perl, "since 1987");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox_java')->id, "40", "guest", "data", "1");
         return $page;
     }
 
@@ -443,14 +453,11 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Since no fields under version control are affected, this shouldn't add
      * any rows to version control database tables.
      *
-     * @todo remove resetTrackChanges after ProcessWire issue #367 is resolved
-     * @depends testEditMultiLanguageFields
+     * @depends testEditPage
      * @param Page $page
      * @return Page
      */
     public function testUnpublishPage(Page $page) {
-        $page->text_language->resetTrackChanges();
-        $page->setOutputFormatting(false);
         $page->addStatus(Page::statusUnpublished);
         $page->save();
         return $page;
@@ -467,7 +474,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testPublishPage(Page $page) {
-        $page->setOutputFormatting(false);
         $page->removeStatus(Page::statusUnpublished);
         $page->save();
         return $page;
@@ -484,7 +490,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditAndUnpublishPage(Page $page) {
-        $page->setOutputFormatting(false);
         $page->addStatus(Page::statusUnpublished);
         $page->sidebar = "sidebar test";
         $page->save();
@@ -502,7 +507,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testMovePage(Page $page) {
-        $page->setOutputFormatting(false);
         $page->parent = wire('pages')->get("/")->child();
         $page->save();
         return $page;
@@ -519,7 +523,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testTrashPage(Page $page) {
-        $page->setOutputFormatting(false);
         $page->trash();
         return $page;
     }
@@ -535,7 +538,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testRestorePage(Page $page) {
-        $page->setOutputFormatting(false);
         $page->parent = wire('pages')->get("/");
         $page->save();
         return $page;
@@ -577,7 +579,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // we'll generate small gap here by making PHP sleep for a few seconds
         sleep(4);
 
-        $page->setOutputFormatting(false);
         $page->title = "a test page 3";
         $page->name = $page->title;
         $page->body = "new body text";
@@ -623,7 +624,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * @return Page
      */
     public function testEditPageField(Page $page) {
-        $page->setOutputFormatting(false);
         $page->page = wire('pages')->get('/about/');
         $page->save();
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1001");
@@ -697,7 +697,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // we'll generate small gap here by making PHP sleep for a few seconds
         sleep(4);
 
-        $page->setOutputFormatting(false);
         $page->title = "a test page 3";
         $page->name = $page->title;
         $page->summary = "new summary text";
