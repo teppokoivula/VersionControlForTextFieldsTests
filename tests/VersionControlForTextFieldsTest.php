@@ -39,8 +39,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // Set module name
         self::$module_name = substr(__CLASS__, 0, strlen(__CLASS__)-4);
 
-        // Create new page field and add it to basic-page template (unless this
-        // field already exists and has been added to said template)
+        // Create new page field and add it to basic-page template
         $field = wire('fields')->get('page');
         if (!$field || !$field->id) {
             $field = new Field;
@@ -49,17 +48,16 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $field->parent_id = 1; // home
             $field->inputfield = 'InputfieldAsmSelect';
             $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
         $fieldgroup = wire('fieldgroups')->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
         }
 
-        // Create new repeater field and add it to basic-page template (unless
-        // this field already exists and has been added to said template)
+        // Create new repeater field and add it to basic-page template
         $field_name = "repeater";
         $field = wire('fields')->get($field_name);
         if (!$field || !$field->id) {
@@ -81,34 +79,103 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
             $field->parent_id = wire('pages')->get("name=for-field-{$field->id}")->id;
             $field->template_id = $template->id;
             $field->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
         }
         $fieldgroup = wire('fieldgroups')->get('basic-page');
         if (!$fieldgroup->hasField($field)) {
             $fieldgroup->add($field);
             $fieldgroup->save();
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
         }
 
         // Remove any pages created but not removed during previous tests
         foreach (wire('pages')->find("name^=a-test-page, include=all") as $page) {
             $page->delete();
-            $messages[] = get_class($page) . " '{$page->url}' deleted.";
+            $messages[] = get_class($page) . " '{$page->url}' deleted";
         }
 
         // Uninstall module (if installed)
         if (wire('modules')->isInstalled(self::$module_name)) {
             if (wire('modules')->isUninstallable(self::$module_name)) {
                 wire('modules')->uninstall(self::$module_name);
-                $messages[] = "Module '" . self::$module_name . "' uninstalled.";
+                $messages[] = "Module '" . self::$module_name . "' uninstalled";
             } else {
-                $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests.";
+                $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests";
             }
         }
 
+        // Create dummy languages
+        $languages_page = wire('pages')->get(wire('modules')->get('LanguageSupport')->languagesPageID);
+        $language_names = array('java', 'perl');
+        while ($language_name = array_shift($language_names)) {
+            $language = wire('languages')->get($language_name);
+            if (!$language->id) {
+                $language = wire('languages')->add($language_name);
+                $messages[] = get_class($language) . " '" . $language->name . "' added";
+            }
+        }
+
+        // Install LanguageSupportFields (unless already installed)
+        $module_name = 'LanguageSupportFields';
+        if (!wire('modules')->isInstalled($module_name)) {
+            $module = wire('modules')->getInstall($module_name);
+            if (wire('modules')->isInstalled($module_name)) {
+                $messages[] = "Module '{$module_name}' installed";
+            } else {
+                $errors[] = "Unable to install '{$module_name}'";
+            }
+        }
+
+        // Create new multi-language textfield and add it to basic-page template
+        $field = wire('fields')->get('text_language');
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeTextLanguage');
+            $field->name = 'text_language';
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+
+        // Create checkbox fields and add them to basic-page template (note:
+        // language alternate fields)
+        $field = wire('fields')->get('checkbox');
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeCheckbox');
+            $field->name = 'checkbox';
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+        $field = wire('fields')->get('checkbox_java');
+        if (!$field || !$field->id) {
+            $field = new Field;
+            $field->type = wire('modules')->get('FieldtypeCheckbox');
+            $field->name = 'checkbox_java';
+            $field->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added";
+        }
+        $fieldgroup = wire('fieldgroups')->get('basic-page');
+        if (!$fieldgroup->hasField($field)) {
+            $fieldgroup->add($field);
+            $fieldgroup->save();
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' added to fieldgroup '{$fieldgroup->name}'";
+        }
+
         // Messages and errors
-        if ($messages) echo "\n" . implode($messages, " ") . "\n\n";
-        if ($errors) die("\n" . implode($errors, " ") . "\n\n");
+        if ($messages) echo "* " . implode($messages, "\n* ") . "\n\n";
+        if ($errors) die("* " . implode($errors, "\n* ") . "\n\n");
         
         // Setup static variables
         self::$data = array();
@@ -131,54 +198,77 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         // Remove any pages created but not removed during tests
         foreach (wire('pages')->find("title^='a test page', include=all") as $page) {
             $page->delete();
-            $messages[] = get_class($page) . " '{$page->url}' deleted.";
-        }
-
-        // Remove page field from templates (or fieldgroups) it's added to and
-        // then remove the field itself.
-        $field = wire('fields')->get('page');
-        if ($field->id) {
-            $fieldgroups = $field->getFieldgroups();
-            foreach ($fieldgroups as $fieldgroup) {
-                $fieldgroup->remove($field);
-                $fieldgroup->save();
-                $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'.";
-            }
-            wire('fields')->delete($field);
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted.";
+            $messages[] = get_class($page) . " '{$page->url}' deleted";
         }
 
         // Remove repeater field from templates (or fieldgroups) it's added to
-        // and then remove the field itself.
+        // and then remove the field itself
         $field = wire('fields')->get('repeater');
         if ($field->id) {
             $fieldgroups = $field->getFieldgroups();
             foreach ($fieldgroups as $fieldgroup) {
                 $fieldgroup->remove($field);
                 $fieldgroup->save();
-                $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'.";
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'";
             }
             foreach (wire('pages')->find("template=repeater_{$field->name}, include=all") as $page) {
                 $page->delete();
-                $messages[] = get_class($page) . " '{$page->url}' deleted.";
+                $messages[] = get_class($page) . " '{$page->url}' deleted";
             }
             wire('fields')->delete($field);
-            $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted.";
+            $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted";
+        }
+
+        // Remove "regular" fields from templates (or fieldgroups) they're added
+        // to and then remove the fields themselves
+        $fields = array('page', 'text_language', 'checkbox', 'checkbox_java');
+        foreach ($fields as $field) {
+            $field = wire('fields')->get($field);
+            if ($field->id) {
+                $fieldgroups = $field->getFieldgroups();
+                foreach ($fieldgroups as $fieldgroup) {
+                    $fieldgroup->remove($field);
+                    $fieldgroup->save();
+                    $messages[] = substr($field->type, 9) . " field '{$field->name}' removed from fieldgroup '{$fieldgroup->name}'";
+                }
+                wire('fields')->delete($field);
+                $messages[] = substr($field->type, 9) . " field '{$field->name}' deleted";
+            }
         }
 
         // Uninstall module (if installed)
         if (wire('modules')->isInstalled(self::$module_name)) {
             if (wire('modules')->isUninstallable(self::$module_name)) {
                 wire('modules')->uninstall(self::$module_name);
-                $messages[] = "Module '" . self::$module_name . "' uninstalled.";
+                $messages[] = "Module '" . self::$module_name . "' uninstalled";
             } else {
-                $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests.";
+                $errors[] = "Module '" . self::$module_name . "' not uninstallable, please uninstall manually before any new tests";
+            }
+        }
+
+        // Remove dummy languages
+        $language_names = array('java', 'perl');
+        while ($language_name = array_shift($language_names)) {
+            $language = wire('languages')->get($language_name);
+            if ($language->id) {
+                $language->delete();
+                $messages[] = get_class($language) . " '" . $language->name . "' deleted";
+            }
+        }
+
+        // Uninstall LanguageSupportFields
+        if (wire('modules')->isInstalled('LanguageSupportFields')) {
+            wire('modules')->uninstall('LanguageSupportFields');
+            if (!wire('modules')->isInstalled('LanguageSupportFields')) {
+                $messages[] = "Uninstalled language support for fields (LanguageSupportFields)";
+            } else {
+                $errors[] = "Unable to uninstall language support for fields (LanguageSupportFields)";
             }
         }
 
         // Messages and errors
-        if ($messages) echo "\n\n" . implode($messages, " ") . "\n";
-        if ($errors) die("\n\n" . implode($errors, " ") . "\n");
+        if ($messages) echo "\n\n* " . implode($messages, "\n* ");
+        if ($errors) die("\n\n* " . implode($errors, "\n* "));
         
     }
 
@@ -190,26 +280,42 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      *
      */
     public function tearDown() {
-        if (!in_array($this->getName(), array("testModuleIsInstallable", "testModuleIsUninstallable", "testUninstallModule"))) {
-            $t1 = constant(self::$module_name . "::TABLE_NAME");
-            $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
-            $result = wire('db')->query("
+
+        // Skip teardown for some tests
+        $skip_teardown = array(
+            "testModuleIsInstallable",
+            "testModuleIsUninstallable",
+            "testUninstallModule",
+        );
+        if (in_array($this->getName(), $skip_teardown)) return;
+
+        // Fetch content from version control database tables
+        $t1 = constant(self::$module_name . "::TABLE_NAME");
+        $t2 = constant(self::$module_name . "::DATA_TABLE_NAME");
+        $result = wire('db')->query("
             SELECT pages_id, fields_id, users_id, username, property, data 
             FROM {$t1} t1
             JOIN {$t2} t2 ON t2.{$t1}_id = t1.id 
-            ");
-            $num = 0;
-            while ($row = $result->fetch_row()) {
-                $data = isset(self::$data[$num]) ? self::$data[$num] : null;
-                $message = null;
-                if (!$data) {
-                    $data = array();
-                    $message = "Local data row was NULL, using placeholder array to get meaningful diff output.";
-                }
-                $this->assertEquals($data, $row, $message);
-                ++$num;
+        ");
+
+        // Compare fetched rows to temporary array containing local data rows
+        $data = self::$data;
+        while ($row = $result->fetch_row()) {
+            $data_row = count($data) ? array_shift($data) : null;
+            $message = null;
+            if (!$data_row) {
+                $data_row = array();
+                $message = "Local data row was NULL, using placeholder array";
             }
+            $this->assertEquals($data_row, $row, $message);
         }
+
+        // There shouldn't be any data left in aforementioned temporary array
+        if ($data) {
+            $data = var_export($data, true);
+            $this->fail("Local data has more rows than database:\n\n$data");
+        }
+
     }
     
     /**
@@ -244,6 +350,9 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
                 1, // title
                 76, // body
                 wire('fields')->get('page')->id,
+                wire('fields')->get('checkbox')->id,
+                wire('fields')->get('checkbox_java')->id,
+                wire('fields')->get('text_language')->id,
             ),
         );
         $defaults = VersionControlForTextFields::getDefaultData();
@@ -289,9 +398,42 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->setOutputFormatting(false);
         $page->title = "a test page 2";
         $page->body = "body text";
+        $page->checkbox = 1;
+        $page->checkbox_java = 1;
         $page->save();
         self::$data[] = array((string) $page->id, "1", "40", "guest", "data", "a test page 2");
         self::$data[] = array((string) $page->id, "76", "40", "guest", "data", "body text");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox')->id, "40", "guest", "data", "1");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('checkbox_java')->id, "40", "guest", "data", "1");
+        return $page;
+    }
+
+    /**
+     * Make changes to language fields
+     *
+     * Editing value of one multi-language field in two different languages,
+     * both of which were created during setup. This should add two rows to
+     * version control database tables.
+     *
+     * Note: this test can't pass until ProcessWire issue #374 is resolved or
+     * dummy languages are created before bootstrapping ProcessWire for tests.
+     *
+     * @todo module should be updated to avoid always storing empty value for
+     *       default language. This feature depends on ProcessWire issue #373.
+     * @depends testEditPage
+     * @param Page $page
+     * @return Page
+     */
+    public function testEditMultiLanguageFields(Page $page) {
+        $page->setOutputFormatting(false);
+        $java = wire('languages')->get('java');
+        $perl = wire('languages')->get('perl');
+        $page->text_language->setLanguageValue($java, 'since 1995');
+        $page->text_language->setLanguageValue($perl, 'since 1987');
+        $page->save();
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data", "");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $java, "since 1995");
+        self::$data[] = array((string) $page->id, (string) wire('fields')->get('text_language')->id, "40", "guest", "data" . $perl, "since 1987");
         return $page;
     }
 
@@ -301,11 +443,13 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * Since no fields under version control are affected, this shouldn't add
      * any rows to version control database tables.
      *
-     * @depends testEditPage
+     * @todo remove resetTrackChanges after ProcessWire issue #367 is resolved
+     * @depends testEditMultiLanguageFields
      * @param Page $page
      * @return Page
      */
     public function testUnpublishPage(Page $page) {
+        $page->text_language->resetTrackChanges();
         $page->setOutputFormatting(false);
         $page->addStatus(Page::statusUnpublished);
         $page->save();
@@ -482,7 +626,6 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         $page->setOutputFormatting(false);
         $page->page = wire('pages')->get('/about/');
         $page->save();
-        // @todo find out why another $page->save() here would save duplicate data row
         self::$data[] = array((string) $page->id, (string) wire('fields')->get('page')->id, "40", "guest", "data", "1001");
         return $page;
     }
@@ -493,8 +636,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
      * This operation should clear all previously added rows from version
      * control database table.
      *
-     * Note: this will fail unless you're running ProcessWire 2.4+ with issue
-     * related to repeater garbage cleaning fixed in Pages->delete().
+     * Note: won't pass until ProcessWire issue #368 is resolved.
      *
      * @depends testEditPageField
      * @param Page $page
