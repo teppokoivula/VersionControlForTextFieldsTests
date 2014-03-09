@@ -254,12 +254,14 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
         }
 
         // Remove dummy languages
-        $language_names = array('java', 'perl');
-        while ($language_name = array_shift($language_names)) {
-            $language = wire('languages')->get($language_name);
-            if ($language->id) {
-                $language->delete();
-                $messages[] = get_class($language) . " '" . $language->name . "' deleted";
+        if (method_exists(wire('languages'), 'reloadLanguages')) {
+            $language_names = array('java', 'perl');
+            while ($language_name = array_shift($language_names)) {
+                $language = wire('languages')->get($language_name);
+                if ($language->id) {
+                    $language->delete();
+                    $messages[] = get_class($language) . " '" . $language->name . "' deleted";
+                }
             }
         }
 
@@ -275,7 +277,7 @@ class VersionControlForTextFieldsTest extends PHPUnit_Framework_TestCase {
 
         // Messages and errors
         if ($messages) echo "\n\n* " . implode($messages, "\n* ");
-        if ($errors) die("\n\n* " . implode($errors, "\n* "));
+        if ($errors) die("\n* " . implode($errors, "\n* ") . "\n");
         
     }
 
